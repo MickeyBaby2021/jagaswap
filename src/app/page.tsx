@@ -27,6 +27,7 @@ export default function Home() {
         const model = models.realtime("lucy-latest");
         
         const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
           video: {
             frameRate: model.fps,
             width: model.width,
@@ -102,9 +103,15 @@ export default function Home() {
 
       const realtimeClient = await client.realtime.connect(streamRef.current, {
         model,
+        mirror: true,
         onRemoteStream: (remoteStream) => {
+          console.log("Remote stream received, tracks:", remoteStream.getVideoTracks().length);
           if (outputVideoRef.current) {
             outputVideoRef.current.srcObject = remoteStream;
+            // Ensure video plays
+            outputVideoRef.current.play().catch(e => {
+              console.log("Play error:", e);
+            });
           }
         },
         onConnectionChange: (state) => {
@@ -283,9 +290,20 @@ export default function Home() {
               muted
               className="w-full h-full object-cover"
             />
-            {!isConnected && (
+            {!isConnected && connectionState === "idle" && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <span className="text-blue-400/70 text-sm">AI Output</span>
+              </div>
+            )}
+            {connectionState === "connecting" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
+                <span className="text-blue-400 text-sm mb-2">AI Processing...</span>
+                <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+            {isConnected && (
+              <div className="absolute top-2 right-2 px-2 py-1 rounded bg-green-500/80 text-white text-xs font-medium">
+                LIVE
               </div>
             )}
           </div>
