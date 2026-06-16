@@ -5,6 +5,10 @@ import { createDecartClient, models, type RealTimeClient } from "@decartai/sdk";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "error";
 
+// Get model once outside component
+const MODEL_NAME = "lucy-latest";
+const getModel = () => models.realtime(MODEL_NAME);
+
 export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
@@ -24,7 +28,7 @@ export default function Home() {
   useEffect(() => {
     async function initCamera() {
       try {
-        const model = models.realtime("lucy-latest");
+        const model = getModel();
         
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -98,19 +102,15 @@ export default function Home() {
         apiKey: key,
       });
 
-      const model = models.realtime("lucy-latest");
+      const model = getModel();
 
       const realtimeClient = await client.realtime.connect(streamRef.current, {
         model,
-        mirror: false,
+        mirror: true,
         onRemoteStream: (remoteStream) => {
           console.log("Remote stream received, tracks:", remoteStream.getVideoTracks().length);
           if (outputVideoRef.current) {
             outputVideoRef.current.srcObject = remoteStream;
-            // Ensure video plays
-            outputVideoRef.current.play().catch(e => {
-              console.log("Play error:", e);
-            });
           }
         },
         onConnectionChange: (state) => {
@@ -288,7 +288,6 @@ export default function Home() {
               playsInline
               muted
               className="w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }}
             />
             {!isConnected && connectionState === "idle" && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
