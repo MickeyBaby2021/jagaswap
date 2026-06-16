@@ -72,7 +72,12 @@ export default function Home() {
   }, []);
 
   const startTransformation = useCallback(async () => {
-    if (!cameraReady || !streamRef.current || !referenceImage) {
+    if (!cameraReady || !streamRef.current) {
+      setError("Camera not ready. Please allow camera access.");
+      return;
+    }
+
+    if (!referenceImage) {
       setError("Please upload a reference image first");
       return;
     }
@@ -80,13 +85,13 @@ export default function Home() {
     // Use local API key if provided, otherwise try environment variable
     const key = apiKey || process.env.NEXT_PUBLIC_DECART_API_KEY || "";
     if (!key) {
-      setError("Please enter your API Key above");
+      setError("Please add your Decart API Key first (click 'Add API Key' button)");
       setShowApiKeyInput(true);
       return;
     }
 
     setConnectionState("connecting");
-    setError(null);
+    setError("Connecting to AI service...");
 
     try {
       const client = createDecartClient({
@@ -107,13 +112,20 @@ export default function Home() {
           if (state === "connected" || state === "generating") {
             setIsConnected(true);
             setConnectionState("connected");
+            setError(null);
           } else if (state === "reconnecting") {
             setIsConnected(false);
             setConnectionState("connecting");
+            setError("Reconnecting...");
           } else {
             setIsConnected(false);
             setConnectionState("idle");
           }
+        },
+        onError: (err) => {
+          console.error("Realtime error:", err);
+          setError("AI Error: " + (err?.message || err?.error || "Connection failed"));
+          setConnectionState("error");
         },
         initialState: {
           prompt: {
@@ -127,9 +139,18 @@ export default function Home() {
       realtimeClientRef.current = realtimeClient;
       setIsConnected(true);
       setConnectionState("connected");
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error("Failed to start:", err);
-      setError("Failed to connect to AI service. Check your API key.");
+      let errorMessage = "Failed to connect to AI service";
+      if (err?.message?.includes("Insufficient credits")) {
+        errorMessage = "Insufficient credits! Please add credits to your Decart account.";
+      } else if (err?.error?.includes("Insufficient credits")) {
+        errorMessage = "Insufficient credits! Please add credits to your Decart account.";
+      } else if (err?.message?.includes("401") || err?.message?.includes("Unauthorized")) {
+        errorMessage = "Invalid API key. Please check your Decart API key.";
+      }
+      setError(errorMessage);
       setConnectionState("error");
     }
   }, [cameraReady, referenceImage, apiKey]);
@@ -188,28 +209,30 @@ export default function Home() {
           onClick={() => setShowApiKeyInput(!showApiKeyInput)}
           className="px-4 py-1 text-sm rounded-lg transition-all duration-300 cursor-pointer"
           style={{ 
-            background: 'rgba(139, 92, 246, 0.1)', 
-            border: '1px solid rgba(139, 92, 246, 0.5)',
-            color: '#c4b5fd'
+            background: apiKey ? 'rgba(34, 197, 94, 0.2)' : 'rgba(139, 92, 246, 0.1)', 
+            border: apiKey ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(139, 92, 246, 0.5)',
+            color: apiKey ? '#4ade80' : '#c4b5fd'
           }}
         >
-          {showApiKeyInput ? "Hide API Key" : "Add API Key"}
+          {apiKey ? "✓ API Key Ready" : (showApiKeyInput ? "Hide API Key" : "Add API Key")}
         </button>
         {showApiKeyInput && (
           <div className="flex flex-col items-center gap-2">
             <input
-              type="password"
-              placeholder="Enter Decart API Key"
+              type="text"
+              placeholder="Paste Decart API Key here"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="px-4 py-2 rounded-lg w-80 text-sm"
+              className="px-4 py-3 rounded-lg w-80 text-sm"
               style={{ 
-                background: 'rgba(10, 10, 15, 0.8)', 
-                border: '1px solid rgba(139, 92, 246, 0.5)',
+                background: 'rgba(10, 10, 15, 0.9)', 
+                border: '2px solid rgba(139, 92, 246, 0.6)',
                 color: '#e0e0e0'
               }}
             />
-            <p className="text-xs text-blue-300/50">Enter your Decart API key to enable AI transformation</p>
+            <p className="text-xs text-blue-300/50">
+              {apiKey ? "API Key entered! Now click START" : "Paste your Decart API key here, then click START"}
+            </p>
           </div>
         )}
       </div>
@@ -285,7 +308,7 @@ export default function Home() {
             disabled={!cameraReady || !referenceImage || connectionState === "connecting"}
             className="px-8 py-3 rounded-xl font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ 
-              background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+              background: (!apiKey && !process.env.NEXT_PUBLIC_DECART_API_KEY) ? 'rgba(239, 68, 68, 0.5)' : 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
               boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)'
             }}
             onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 25px rgba(59, 130, 246, 0.6)'}
