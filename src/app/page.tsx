@@ -27,7 +27,6 @@ export default function Home() {
         const model = models.realtime("lucy-latest");
         
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
           video: {
             frameRate: model.fps,
             width: model.width,
@@ -103,7 +102,7 @@ export default function Home() {
 
       const realtimeClient = await client.realtime.connect(streamRef.current, {
         model,
-        mirror: true,
+        mirror: false,
         onRemoteStream: (remoteStream) => {
           console.log("Remote stream received, tracks:", remoteStream.getVideoTracks().length);
           if (outputVideoRef.current) {
@@ -289,6 +288,7 @@ export default function Home() {
               playsInline
               muted
               className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
             />
             {!isConnected && connectionState === "idle" && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
