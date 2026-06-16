@@ -11,6 +11,8 @@ export default function Home() {
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const outputVideoRef = useRef<HTMLVideoElement>(null);
@@ -75,12 +77,20 @@ export default function Home() {
       return;
     }
 
+    // Use local API key if provided, otherwise try environment variable
+    const key = apiKey || process.env.NEXT_PUBLIC_DECART_API_KEY || "";
+    if (!key) {
+      setError("Please enter your API Key above");
+      setShowApiKeyInput(true);
+      return;
+    }
+
     setConnectionState("connecting");
     setError(null);
 
     try {
       const client = createDecartClient({
-        apiKey: process.env.NEXT_PUBLIC_DECART_API_KEY || "",
+        apiKey: key,
       });
 
       const model = models.realtime("lucy-latest");
@@ -122,7 +132,7 @@ export default function Home() {
       setError("Failed to connect to AI service. Check your API key.");
       setConnectionState("error");
     }
-  }, [cameraReady, referenceImage]);
+  }, [cameraReady, referenceImage, apiKey]);
 
   const stopTransformation = useCallback(() => {
     if (realtimeClientRef.current) {
@@ -168,6 +178,38 @@ export default function Home() {
         {referenceImage && (
           <div className="w-32 h-32 rounded-lg overflow-hidden" style={{ border: '2px solid rgba(59, 130, 246, 0.5)', boxShadow: '0 0 15px rgba(59, 130, 246, 0.3)' }}>
             <img src={referenceImage} alt="Reference" className="w-full h-full object-cover" />
+          </div>
+        )}
+      </div>
+
+      {/* API Key Input */}
+      <div className="mb-8 flex flex-col items-center gap-4">
+        <button
+          onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+          className="px-4 py-1 text-sm rounded-lg transition-all duration-300 cursor-pointer"
+          style={{ 
+            background: 'rgba(139, 92, 246, 0.1)', 
+            border: '1px solid rgba(139, 92, 246, 0.5)',
+            color: '#c4b5fd'
+          }}
+        >
+          {showApiKeyInput ? "Hide API Key" : "Add API Key"}
+        </button>
+        {showApiKeyInput && (
+          <div className="flex flex-col items-center gap-2">
+            <input
+              type="password"
+              placeholder="Enter Decart API Key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="px-4 py-2 rounded-lg w-80 text-sm"
+              style={{ 
+                background: 'rgba(10, 10, 15, 0.8)', 
+                border: '1px solid rgba(139, 92, 246, 0.5)',
+                color: '#e0e0e0'
+              }}
+            />
+            <p className="text-xs text-blue-300/50">Enter your Decart API key to enable AI transformation</p>
           </div>
         )}
       </div>
